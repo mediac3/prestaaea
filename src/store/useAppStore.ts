@@ -9,7 +9,10 @@ export type Page =
   | 'new-loan'
   | 'loan-detail'
   | 'register-payment'
-  | 'notifications';
+  | 'notifications'
+  | 'audit'
+  | 'users'
+  | 'ai-chat';
 
 interface User {
   id: string;
@@ -63,7 +66,7 @@ export const useAppStore = create<AppState>((set) => ({
   setSelectedClientId: (id) => set({ selectedClientId: id }),
 
   // Sidebar
-  sidebarOpen: true,
+  sidebarOpen: false,
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
 

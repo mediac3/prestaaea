@@ -9,6 +9,9 @@ import NewLoanPage from '@/components/prestaae/NewLoanPage';
 import LoanDetailPage from '@/components/prestaae/LoanDetailPage';
 import RegisterPaymentPage from '@/components/prestaae/RegisterPaymentPage';
 import NotificationsPage from '@/components/prestaae/NotificationsPage';
+import AuditPage from '@/components/prestaae/AuditPage';
+import UsersPage from '@/components/prestaae/UsersPage';
+import AIChatPage from '@/components/prestaae/AIChatPage';
 import Sidebar, { TopBar } from '@/components/prestaae/Sidebar';
 
 function PageRouter() {
@@ -21,17 +24,20 @@ function PageRouter() {
     case 'loan-detail': return <LoanDetailPage />;
     case 'register-payment': return <RegisterPaymentPage />;
     case 'notifications': return <NotificationsPage />;
+    case 'audit': return <AuditPage />;
+    case 'users': return <UsersPage />;
+    case 'ai-chat': return <AIChatPage />;
     default: return <DashboardPage />;
   }
 }
 
 export default function Home() {
-  const { isAuthenticated, sidebarOpen } = useAppStore();
+  const { isAuthenticated } = useAppStore();
   if (!isAuthenticated) return <LoginPage />;
   return (
     <div className="min-h-screen bg-grid-pattern">
       <Sidebar />
-      <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'ml-0'}`}>
+      <div>
         <TopBar />
         <main className="min-h-[calc(100vh-4rem)]"><PageRouter /></main>
       </div>

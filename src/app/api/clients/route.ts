@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { logAudit, getClientIp } from '@/lib/audit'
 
 export async function GET(request: NextRequest) {
   try {
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, cedula, phone, address, notes, status } = body
+    const { name, cedula, phone, address, notes, status, _audit } = body
 
     if (!name || !cedula || !phone) {
       return NextResponse.json(
@@ -72,6 +73,18 @@ export async function POST(request: NextRequest) {
         status: status || 'activo',
       },
     })
+
+    if (_audit) {
+      await logAudit({
+        userId: _audit.userId,
+        userName: _audit.userName,
+        userEmail: _audit.userEmail,
+        action: 'CREATE_CLIENT',
+        module: 'clients',
+        details: { clientName: name, cedula },
+        ipAddress: getClientIp(request),
+      })
+    }
 
     return NextResponse.json(client, { status: 201 })
   } catch (error) {

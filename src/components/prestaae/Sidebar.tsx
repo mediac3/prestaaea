@@ -11,13 +11,19 @@ import {
   Menu,
   Info,
   X,
+  Shield,
+  UserCog,
+  Bot,
 } from 'lucide-react';
 
-const navItems: { page: Page; label: string; icon: React.ElementType }[] = [
+const navItems: { page: Page; label: string; icon: React.ElementType; adminOnly?: boolean }[] = [
   { page: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { page: 'clients', label: 'Clientes', icon: Users },
   { page: 'loans', label: 'Préstamos', icon: FileText },
   { page: 'notifications', label: 'Notificaciones', icon: Bell },
+  { page: 'audit', label: 'Auditoría', icon: Shield, adminOnly: true },
+  { page: 'users', label: 'Usuarios', icon: UserCog, adminOnly: true },
+  { page: 'ai-chat', label: 'Asistente IA', icon: Bot, adminOnly: true },
 ];
 
 export default function Sidebar() {
@@ -25,17 +31,17 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Mobile overlay */}
+      {/* Overlay (mobile + desktop when open) */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-40"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - always off-screen by default, slides in on toggle */}
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-64 bg-[#0F172A] border-r border-[#1E293B] flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+        className={`fixed top-0 left-0 z-50 h-full w-64 bg-[#0F172A] border-r border-[#1E293B] flex flex-col transition-transform duration-300 ease-in-out ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -50,7 +56,7 @@ export default function Sidebar() {
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden text-slate-400 hover:text-white"
+            className="text-slate-400 hover:text-white"
           >
             <X className="w-5 h-5" />
           </button>
@@ -58,7 +64,7 @@ export default function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map((item) => {
+          {navItems.filter((item) => !item.adminOnly || user?.role === 'admin').map((item) => {
             const isActive = currentPage === item.page ||
               (item.page === 'clients' && currentPage === 'new-client') ||
               (item.page === 'loans' && (currentPage === 'new-loan' || currentPage === 'loan-detail' || currentPage === 'register-payment'));
@@ -113,6 +119,9 @@ export function TopBar() {
     'loan-detail': 'Detalle de Préstamo',
     'register-payment': 'Registrar Pago',
     notifications: 'Notificaciones',
+    audit: 'Auditoría',
+    users: 'Usuarios',
+    'ai-chat': 'Asistente IA',
   };
 
   const pageSubtitles: Record<string, string> = {
@@ -125,13 +134,16 @@ export function TopBar() {
     'loan-detail': 'Detalle del préstamo y historial de pagos',
     'register-payment': 'Registra un pago de intereses y/o abono a capital',
     notifications: 'Clientes con pagos próximos a vencer',
+    audit: 'Registro de actividades del sistema',
+    users: 'Administra los usuarios del sistema',
+    'ai-chat': 'Asistente inteligente de gestión de créditos',
   };
 
   return (
     <header className="sticky top-0 z-30 bg-[#0F172A] border-b border-[#1E293B]">
       <div className="flex items-center justify-between px-4 md:px-6 h-16">
         <div className="flex items-center gap-3">
-          <button onClick={toggleSidebar} className="lg:hidden text-slate-400 hover:text-white transition-colors p-1">
+          <button onClick={toggleSidebar} className="text-slate-400 hover:text-white transition-colors p-1">
             <Menu className="w-6 h-6" />
           </button>
           <div className="hidden lg:block">

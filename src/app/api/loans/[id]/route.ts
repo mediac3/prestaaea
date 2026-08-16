@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { logAudit, getClientIp } from '@/lib/audit'
 
 export async function GET(
   request: NextRequest,
@@ -42,10 +43,11 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { amount, rate, term, paymentDay, amortization, status, notes } = body
+    const { amount, rate, term, paymentDay, amortization, status, notes, _audit } = body
 
     const existingLoan = await db.loan.findUnique({
       where: { id },
+      include: { client: true },
     })
 
     if (!existingLoan) {
@@ -74,6 +76,18 @@ export async function PUT(
       },
     })
 
+    if (_audit) {
+      await logAudit({
+        userId: _audit.userId,
+        userName: _audit.userName,
+        userEmail: _audit.userEmail,
+        action: 'UPDATE_LOAN',
+        module: 'loans',
+        details: { loanId: id, clientName: existingLoan.client?.name, changes: { amount, rate, term, status } },
+        ipAddress: getClientIp(request),
+      })
+    }
+
     return NextResponse.json(loan)
   } catch (error) {
     console.error('Error updating loan:', error)
@@ -94,6 +108,7 @@ export async function DELETE(
     const existingLoan = await db.loan.findUnique({
       where: { id },
       include: {
+        client: true,
         _count: { select: { payments: true } },
       },
     })
@@ -112,9 +127,27 @@ export async function DELETE(
       )
     }
 
+    const auditHeader = request.headers.get('x-audit')
+    let auditData: Record<string, string> | null = null
+    if (auditHeader) {
+      try { auditData = JSON.parse(auditHeader) } catch { /* ignore */ }
+    }
+
     await db.loan.delete({
       where: { id },
     })
+
+    if (auditData) {
+      await logAudit({
+        userId: auditData.userId || 'unknown',
+        userName: auditData.userName || 'Unknown',
+        userEmail: auditData.userEmail || '',
+        action: 'DELETE_LOAN',
+        module: 'loans',
+        details: { loanId: id, clientName: existingLoan.client?.name, amount: existingLoan.amount },
+        ipAddress: getClientIp(request),
+      })
+    }
 
     return NextResponse.json({ message: 'Préstamo eliminado correctamente' })
   } catch (error) {

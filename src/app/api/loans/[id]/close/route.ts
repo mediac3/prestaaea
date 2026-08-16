@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { logAudit, getClientIp } from '@/lib/audit'
 
 export async function POST(
   request: NextRequest,
@@ -7,9 +8,12 @@ export async function POST(
 ) {
   try {
     const { id } = await params
+    const body = await request.json().catch(() => ({}))
+    const { _audit } = body
 
     const loan = await db.loan.findUnique({
       where: { id },
+      include: { client: true },
     })
 
     if (!loan) {
@@ -36,6 +40,18 @@ export async function POST(
         },
       },
     })
+
+    if (_audit) {
+      await logAudit({
+        userId: _audit.userId,
+        userName: _audit.userName,
+        userEmail: _audit.userEmail,
+        action: 'CLOSE_LOAN',
+        module: 'loans',
+        details: { loanId: id, clientName: loan.client?.name, amount: loan.amount },
+        ipAddress: getClientIp(request),
+      })
+    }
 
     return NextResponse.json({ loan: updatedLoan })
   } catch (error) {

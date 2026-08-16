@@ -58,7 +58,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@prestame.com"
+                placeholder="correo@ejemplo.com"
                 required
                 className="w-full bg-[#0B1120] border border-[#1E293B] rounded-xl px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition-all"
               />
@@ -97,27 +97,6 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
-          {/* Demo credentials */}
-          <div className="mt-6 pt-6 border-t border-[#1E293B]">
-            <p className="text-xs text-slate-500 text-center mb-3">Credenciales de demostración</p>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => { setEmail('admin@prestame.com'); setPassword('1038796568'); }}
-                className="text-xs text-slate-400 bg-[#0B1120] border border-[#1E293B] rounded-lg px-3 py-2 hover:border-emerald-500/30 transition-all text-left"
-              >
-                <span className="text-emerald-400 font-medium block">Admin</span>
-                admin@prestame.com
-              </button>
-              <button
-                onClick={() => { setEmail('demo@prestame.com'); setPassword('demo'); }}
-                className="text-xs text-slate-400 bg-[#0B1120] border border-[#1E293B] rounded-lg px-3 py-2 hover:border-emerald-500/30 transition-all text-left"
-              >
-                <span className="text-emerald-400 font-medium block">Demo</span>
-                demo@prestame.com
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>

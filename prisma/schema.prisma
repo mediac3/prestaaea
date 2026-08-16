@@ -58,6 +58,18 @@ model Loan {
   payments      Payment[]
 }
 
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  userName  String
+  userEmail String
+  action    String   // LOGIN, LOGOUT, CREATE_CLIENT, UPDATE_CLIENT, DELETE_CLIENT, CREATE_LOAN, REGISTER_PAYMENT, CLOSE_LOAN, CREATE_USER, UPDATE_USER, DELETE_USER, AI_CHAT
+  module    String   // auth, clients, loans, payments, users, ai
+  details   String?  // JSON string with extra context
+  ipAddress String?
+  createdAt DateTime @default(now())
+}
+
 model Payment {
   id            String   @id @default(cuid())
   loanId        String

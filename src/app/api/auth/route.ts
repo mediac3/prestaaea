@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { logAudit, getClientIp } from '@/lib/audit'
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,6 +26,15 @@ export async function POST(request: NextRequest) {
     }
 
     const { password: _, ...userWithoutPassword } = user
+
+    await logAudit({
+      userId: user.id,
+      userName: user.name,
+      userEmail: user.email,
+      action: 'LOGIN',
+      module: 'auth',
+      ipAddress: getClientIp(request),
+    })
 
     return NextResponse.json({ user: userWithoutPassword })
   } catch (error) {

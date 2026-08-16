@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { logAudit, getClientIp } from '@/lib/audit'
 
 export async function GET(request: NextRequest) {
   try {
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { clientId, amount, rate, term, startDate, paymentDay, amortization, notes } = body
+    const { clientId, amount, rate, term, startDate, paymentDay, amortization, notes, _audit } = body
 
     if (!clientId || !amount || !rate || !term || !startDate || !paymentDay) {
       return NextResponse.json(
@@ -85,6 +86,24 @@ export async function POST(request: NextRequest) {
         },
       },
     })
+
+    if (_audit) {
+      await logAudit({
+        userId: _audit.userId,
+        userName: _audit.userName,
+        userEmail: _audit.userEmail,
+        action: 'CREATE_LOAN',
+        module: 'loans',
+        details: {
+          loanId: loan.id,
+          clientName: client.name,
+          amount: loan.amount,
+          rate: loan.rate,
+          term: loan.term,
+        },
+        ipAddress: getClientIp(request),
+      })
+    }
 
     return NextResponse.json(loan, { status: 201 })
   } catch (error) {
