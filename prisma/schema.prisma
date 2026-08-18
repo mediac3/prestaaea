@@ -75,12 +75,13 @@ model Payment {
   loanId          String
   loan            Loan     @relation(fields: [loanId], references: [id])
   date            DateTime
-  type            String   @default("interes") // interes, interes_capital, capital
+  type            String   @default("interes") // interes, interes_capital, capital, abono_intereses
   interestAmount  Float    @default(0)
   capitalAmount   Float    @default(0)
   interestPayment Float    @default(0) // Abono adicional a intereses
   previousBalance Float
   newBalance      Float
+  receipt         String?  // Número de recibo/comprobante
   notes           String?
   createdAt       DateTime @default(now())
 }

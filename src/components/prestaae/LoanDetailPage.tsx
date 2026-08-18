@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { formatCOP, formatDate, getStatusColor, getStatusLabel } from '@/lib/format';
-import { CreditCard, CheckCircle, Trash2, TrendingUp, Building2, FileText, Save } from 'lucide-react';
+import { CreditCard, CheckCircle, Trash2, TrendingUp, Building2, FileText, Save, Edit2, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface LoanDetail {
@@ -22,8 +22,10 @@ interface LoanDetail {
     type: string;
     interestAmount: number;
     capitalAmount: number;
+    interestPayment: number;
     previousBalance: number;
     newBalance: number;
+    receipt: string | null;
     notes: string | null;
   }[];
 }
@@ -33,6 +35,7 @@ export default function LoanDetailPage() {
   const [loan, setLoan] = useState<LoanDetail | null>(null);
   const [editingNotes, setEditingNotes] = useState(false);
   const [notes, setNotes] = useState('');
+  const [editingPayment, setEditingPayment] = useState<{id: string; type: string; capitalAmount: string; interestPaymentAmount: string; receipt: string; notes: string; date: string} | null>(null);
 
   const loadLoan = useCallback(() => {
     if (!selectedLoanId) return;
@@ -196,24 +199,177 @@ export default function LoanDetailPage() {
             ) : (
               <div className="space-y-2 max-h-80 overflow-y-auto">
                 {loan.payments.map((p) => (
-                  <div key={p.id} className="flex items-center gap-4 p-3 bg-[#0B1120] rounded-xl">
+                  <div key={p.id} className="flex items-center gap-3 p-3 bg-[#0B1120] rounded-xl">
                     <div className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-white font-medium">{formatDate(p.date)}</p>
                       <p className="text-xs text-slate-500">
-                        Intereses: {formatCOP(p.interestAmount)}
-                        {p.capitalAmount > 0 && ` | Capital: ${formatCOP(p.capitalAmount)}`}
+                        Tipo: {p.type === 'interes' ? 'Solo Intereses' : p.type === 'interes_capital' ? 'Intereses + Capital' : p.type === 'capital' ? 'Solo Capital' : 'Abono a Intereses'}
+                        {p.interestAmount > 0 && ` | Int: ${formatCOP(p.interestAmount)}`}
+                        {p.capitalAmount > 0 && ` | Cap: ${formatCOP(p.capitalAmount)}`}
+                        {p.interestPayment > 0 && ` | Abono Int: ${formatCOP(p.interestPayment)}`}
+                        {p.receipt && ` | Recibo: ${p.receipt}`}
                         <span className="ml-2">Saldo: {formatCOP(p.previousBalance)} → {formatCOP(p.newBalance)}</span>
                       </p>
+                      {p.notes && <p className="text-xs text-slate-600 mt-1">Nota: {p.notes}</p>}
                     </div>
-                    <span className="text-sm font-bold text-emerald-400 flex-shrink-0">
-                      {formatCOP(p.interestAmount + p.capitalAmount)}
-                    </span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-sm font-bold text-emerald-400">
+                        {formatCOP(p.interestAmount + p.capitalAmount + p.interestPayment)}
+                      </span>
+                      <button
+                        onClick={() => setEditingPayment({
+                          id: p.id,
+                          type: p.type,
+                          capitalAmount: p.capitalAmount.toString(),
+                          interestPaymentAmount: p.interestPayment.toString(),
+                          receipt: p.receipt || '',
+                          notes: p.notes || '',
+                          date: p.date.split('T')[0],
+                        })}
+                        className="p-1.5 text-slate-400 hover:text-emerald-400 transition-colors"
+                        title="Editar pago"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          const message = `*COMPROBANTE DE PAGO*\n\n*Cliente:* ${loan.client.name}\n*Cédula:* ${loan.client.cedula}\n\n*Fecha:* ${formatDate(p.date)}\n*Tipo:* ${p.type === 'interes' ? 'Solo Intereses' : p.type === 'interes_capital' ? 'Intereses + Capital' : p.type === 'capital' ? 'Solo Capital' : 'Abono a Intereses'}\n\n*Intereses:* ${formatCOP(p.interestAmount)}\n${p.interestPayment > 0 ? `*Abono a Intereses:* ${formatCOP(p.interestPayment)}\n` : ''}${p.capitalAmount > 0 ? `*Abono a Capital:* ${formatCOP(p.capitalAmount)}\n` : ''}*Total Pagado:* ${formatCOP(p.interestAmount + p.capitalAmount + p.interestPayment)}\n\n*Saldo Anterior:* ${formatCOP(p.previousBalance)}\n*Nuevo Saldo:* ${formatCOP(p.newBalance)}\n${p.receipt ? `\n*Recibo:* ${p.receipt}` : ''}${p.notes ? `\n*Notas:* ${p.notes}` : ''}`;
+                          const phone = loan.client.phone.replace(/[^0-9]/g, '');
+                          const url = `https://wa.me/57${phone}?text=${encodeURIComponent(message)}`;
+                          window.open(url, '_blank');
+                        }}
+                        className="p-1.5 text-slate-400 hover:text-green-400 transition-colors"
+                        title="Enviar por WhatsApp"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
+
+          {/* Edit Payment Modal */}
+          {editingPayment && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-[#111827] border border-[#1E293B] rounded-2xl p-6 w-full max-w-md">
+                <h3 className="text-lg font-bold text-white mb-4">Editar Pago</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Fecha</label>
+                    <input
+                      type="date"
+                      value={editingPayment.date}
+                      onChange={(e) => setEditingPayment({...editingPayment, date: e.target.value})}
+                      className="w-full bg-[#0B1120] border border-[#1E293B] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Tipo de pago</label>
+                    <select
+                      value={editingPayment.type}
+                      onChange={(e) => setEditingPayment({...editingPayment, type: e.target.value})}
+                      className="w-full bg-[#0B1120] border border-[#1E293B] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
+                    >
+                      <option value="interes">Solo Intereses</option>
+                      <option value="interes_capital">Intereses + Capital</option>
+                      <option value="capital">Solo Capital</option>
+                      <option value="abono_intereses">Abono a Intereses</option>
+                    </select>
+                  </div>
+                  {(editingPayment.type === 'interes_capital' || editingPayment.type === 'capital') && (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1.5">Abono a Capital</label>
+                      <input
+                        type="number"
+                        value={editingPayment.capitalAmount}
+                        onChange={(e) => setEditingPayment({...editingPayment, capitalAmount: e.target.value})}
+                        className="w-full bg-[#0B1120] border border-[#1E293B] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
+                      />
+                    </div>
+                  )}
+                  {editingPayment.type !== 'capital' && (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                        Abono a Intereses {editingPayment.type === 'abono_intereses' ? '(obligatorio)' : '(opcional)'}
+                      </label>
+                      <input
+                        type="number"
+                        value={editingPayment.interestPaymentAmount}
+                        onChange={(e) => setEditingPayment({...editingPayment, interestPaymentAmount: e.target.value})}
+                        className="w-full bg-[#0B1120] border border-[#1E293B] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Número de Recibo</label>
+                    <input
+                      type="text"
+                      value={editingPayment.receipt}
+                      onChange={(e) => setEditingPayment({...editingPayment, receipt: e.target.value})}
+                      placeholder="Opcional"
+                      className="w-full bg-[#0B1120] border border-[#1E293B] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Notas</label>
+                    <textarea
+                      value={editingPayment.notes}
+                      onChange={(e) => setEditingPayment({...editingPayment, notes: e.target.value})}
+                      rows={2}
+                      className="w-full bg-[#0B1120] border border-[#1E293B] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 resize-none"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 mt-6">
+                  <button
+                    onClick={() => setEditingPayment(null)}
+                    className="px-4 py-2.5 text-sm text-slate-300 hover:text-white transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (editingPayment.type === 'abono_intereses' && !editingPayment.interestPaymentAmount) {
+                        toast.error('El abono a intereses es obligatorio');
+                        return;
+                      }
+                      try {
+                        const res = await fetch(`/api/payments/${editingPayment.id}`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            date: editingPayment.date,
+                            type: editingPayment.type,
+                            capitalAmount: parseFloat(editingPayment.capitalAmount) || 0,
+                            interestPaymentAmount: parseFloat(editingPayment.interestPaymentAmount) || 0,
+                            receipt: editingPayment.receipt,
+                            notes: editingPayment.notes,
+                          }),
+                        });
+                        if (res.ok) {
+                          toast.success('Pago actualizado');
+                          setEditingPayment(null);
+                          loadLoan();
+                          triggerRefresh();
+                        } else {
+                          const data = await res.json();
+                          toast.error(data.error || 'Error al actualizar');
+                        }
+                      } catch {
+                        toast.error('Error de conexión');
+                      }
+                    }}
+                    className="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all"
+                  >
+                    Guardar Cambios
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Notes */}
           <div className="bg-[#111827] border border-[#1E293B] rounded-2xl p-6">
