@@ -21,6 +21,7 @@ export default function RegisterPaymentPage() {
   const [selectedLoan, setSelectedLoan] = useState<LoanOption | null>(null);
   const [paymentType, setPaymentType] = useState<'interes' | 'interes_capital' | 'capital'>('interes');
   const [capitalAmount, setCapitalAmount] = useState('');
+  const [interestPaymentAmount, setInterestPaymentAmount] = useState(''); // Abono adicional a intereses
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
@@ -44,7 +45,8 @@ export default function RegisterPaymentPage() {
     : 0;
   const monthlyInterest = selectedLoan ? currentBalance * (selectedLoan.rate / 100) : 0;
   const capital = paymentType === 'capital' ? (parseFloat(capitalAmount) || 0) : (paymentType === 'interes_capital' ? (parseFloat(capitalAmount) || 0) : 0);
-  const totalPayment = (paymentType === 'capital' ? 0 : monthlyInterest) + capital;
+  const interestPayment = parseFloat(interestPaymentAmount) || 0; // Abono adicional a intereses
+  const totalPayment = (paymentType === 'capital' ? 0 : monthlyInterest) + capital + interestPayment;
   const newBalance = currentBalance - capital;
 
   const handleSubmit = async () => {
@@ -60,6 +62,7 @@ export default function RegisterPaymentPage() {
           type: paymentType,
           interestAmount: paymentType === 'capital' ? 0 : monthlyInterest,
           capitalAmount: capital,
+          interestPaymentAmount: interestPayment, // Abono adicional a intereses
         }),
       });
       const data = await res.json();
@@ -171,6 +174,23 @@ export default function RegisterPaymentPage() {
               </div>
             )}
 
+            {/* Interest Payment Amount (Abono adicional a intereses) */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                Abono a intereses (opcional)
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">$</span>
+                <input
+                  type="number"
+                  value={interestPaymentAmount}
+                  onChange={(e) => setInterestPaymentAmount(e.target.value)}
+                  placeholder="0"
+                  className="w-full bg-[#0B1120] border border-[#1E293B] rounded-xl pl-8 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all"
+                />
+              </div>
+            </div>
+
             {/* Date & Notes */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -221,6 +241,10 @@ export default function RegisterPaymentPage() {
               <div className="flex justify-between">
                 <span className="text-sm text-slate-400">Intereses</span>
                 <span className="text-sm text-white">{paymentType === 'capital' ? formatCOP(0) : formatCOP(monthlyInterest)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-slate-400">Abono a Intereses</span>
+                <span className="text-sm text-white">{formatCOP(interestPayment)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-slate-400">Abono a Capital</span>
