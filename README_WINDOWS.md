@@ -62,17 +62,19 @@ Esta versión incluye todas las funcionalidades actuales:
      ```cmd
      install.bat
      ```
+   - **Nota**: Durante la instalación se creará automáticamente un acceso directo en tu escritorio llamado "Prestaaea"
 
 3. **Iniciar la aplicación**
-   - Haz doble clic en `start.bat`
-   - O ejecuta en CMD:
+   - **Opción A**: Haz doble clic en el ícono "Prestaaea" en tu escritorio
+   - **Opción B**: Haz doble clic en `start.bat`
+   - **Opción C**: Ejecuta en CMD:
      ```cmd
-     start.bat
+     start_with_browser.bat
      ```
 
 4. **Acceder a la aplicación**
-   - Abre tu navegador web
-   - Ve a: http://localhost:3000
+   - El navegador se abrirá automáticamente en: http://localhost:3000/login
+   - Si no se abre automáticamente, ve manualmente a esa URL
 
 ### Método 2: Manual (Comandos)
 
@@ -107,8 +109,9 @@ prestaaea/
 │   ├── components/       # Componentes React
 │   └── lib/              # Utilidades y configuraciones
 ├── public/               # Archivos estáticos
-├── install.bat           # Script de instalación Windows
-├── start.bat             # Script de inicio Windows
+├── install.bat           # Script de instalación Windows (crea ícono en escritorio)
+├── start.bat             # Script de inicio Windows (solo servidor)
+├── start_with_browser.bat # Script completo (servidor + abre navegador al login)
 ├── package.json          # Dependencias del proyecto
 └── README.md             # Esta guía
 ```
