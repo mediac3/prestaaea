@@ -57,4 +57,4 @@ prisma/migrations/
 # Temporary files
 *.tmp
 *.temp
-```
+```.next/
