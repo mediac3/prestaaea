@@ -63,19 +63,26 @@ export async function POST(request: NextRequest) {
 
     const newBalance = previousBalance - capital
 
+    // Crear objeto de pago (con receipt solo si existe en el schema)
+    const paymentData: any = {
+      loanId,
+      date: new Date(date),
+      type,
+      interestAmount,
+      capitalAmount: capital,
+      interestPayment,
+      previousBalance,
+      newBalance: Math.max(newBalance, 0),
+      notes: notes || null,
+    }
+
+    // Agregar receipt solo si se proporcionó (compatibilidad hacia atrás)
+    if (receipt !== undefined && receipt !== null) {
+      paymentData.receipt = receipt
+    }
+
     const payment = await db.payment.create({
-      data: {
-        loanId,
-        date: new Date(date),
-        type,
-        interestAmount,
-        capitalAmount: capital,
-        interestPayment, // Abono adicional a intereses
-        previousBalance,
-        newBalance: Math.max(newBalance, 0),
-        receipt: receipt || null,
-        notes: notes || null,
-      },
+      data: paymentData,
       include: {
         loan: {
           include: {
