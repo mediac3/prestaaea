@@ -39,10 +39,44 @@ function AnimatedNumber({ value, delay = 0 }: { value: number; delay?: number })
 export default function DashboardPage() {
   const { setCurrentPage, setSelectedLoanId, refreshKey } = useAppStore();
   const [data, setData] = useState<DashboardData | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/dashboard').then((r) => r.json()).then(setData);
+    fetch('/api/dashboard')
+      .then((r) => {
+        if (!r.ok) throw new Error('Error al cargar datos');
+        return r.json();
+      })
+      .then((result) => {
+        if (result.error) {
+          setError(result.error);
+          setData(null);
+        } else {
+          setError(null);
+          setData(result);
+        }
+      })
+      .catch((err) => {
+        console.error('Error fetching dashboard:', err);
+        setError('No se pudo cargar el dashboard. Recarga la página.');
+        setData(null);
+      });
   }, [refreshKey]);
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <AlertTriangle className="w-12 h-12 text-red-400" />
+        <p className="text-red-400 font-medium">{error}</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-all"
+        >
+          Recargar
+        </button>
+      </div>
+    );
+  }
 
   if (!data) {
     return (
@@ -52,11 +86,14 @@ export default function DashboardPage() {
     );
   }
 
+  // Validación segura de prestamosVencidos
+  const vencidosCount = data.prestamosVencidos?.count ?? 0;
+
   const kpis = [
     { label: 'TOTAL PRESTADO', value: data.totalPrestado, icon: Wallet, color: 'text-cyan-400', iconBg: 'bg-cyan-500/10' },
     { label: 'INTERESES COBRADOS', value: data.interesesCobrados, icon: TrendingUp, color: 'text-amber-400', iconBg: 'bg-amber-500/10' },
     { label: 'CLIENTES ACTIVOS', value: data.clientesActivos, icon: Users, color: 'text-violet-400', iconBg: 'bg-violet-500/10' },
-    { label: 'PRÉSTAMOS VENCIDOS', value: data.prestamosVencidos.count, icon: AlertTriangle, color: 'text-red-400', iconBg: 'bg-red-500/10' },
+    { label: 'PRÉSTAMOS VENCIDOS', value: vencidosCount, icon: AlertTriangle, color: 'text-red-400', iconBg: 'bg-red-500/10' },
   ];
 
   const maxInterest = Math.max(...data.chartData.map(c => c.intereses), 1);
