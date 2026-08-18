@@ -41,10 +41,38 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo.
-echo ==========================================
-echo   Instalacion Completada Exitosamente!
-echo ==========================================
+echo [INFO] Creando acceso directo en el escritorio...
+call :CreateDesktopShortcut
+
 echo.
-echo Para iniciar la aplicacion, ejecuta: start.bat
+echo =========================================
+echo   Instalacion Completada Exitosamente!
+echo =========================================
+echo.
+echo Se ha creado un icono en tu escritorio llamado "Prestaaea"
+echo Para iniciar la aplicacion, haz doble click en el icono o ejecuta: start.bat
 echo.
 pause
+exit /b 0
+
+:CreateDesktopShortcut
+:: Obtener la ruta completa del directorio actual
+for %%I in (.) do set "APP_DIR=%%~fI"
+
+:: Crear script VBScript para crear el acceso directo
+echo Set WshShell = CreateObject("WScript.Shell") > "%TEMP%\create_shortcut.vbs"
+echo Set oLink = WshShell.CreateShortcut("%USERPROFILE%\Desktop\Prestaaea.lnk") >> "%TEMP%\create_shortcut.vbs"
+echo oLink.TargetPath = "%APP_DIR%\start_with_browser.bat" >> "%TEMP%\create_shortcut.vbs"
+echo oLink.WorkingDirectory = "%APP_DIR%" >> "%TEMP%\create_shortcut.vbs"
+echo oLink.IconLocation = "%SystemRoot%\System32\shell32.dll,13" >> "%TEMP%\create_shortcut.vbs"
+echo oLink.Description = "Prestaaea - Sistema de Gestion de Prestamos" >> "%TEMP%\create_shortcut.vbs"
+echo oLink.Save >> "%TEMP%\create_shortcut.vbs"
+
+:: Ejecutar el script VBScript
+cscript //nologo "%TEMP%\create_shortcut.vbs"
+
+:: Eliminar archivo temporal
+del "%TEMP%\create_shortcut.vbs"
+
+echo [OK] Acceso directo creado en el escritorio.
+goto :EOF
