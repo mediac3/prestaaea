@@ -3,8 +3,21 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { formatCOP, formatDate, getStatusColor, getStatusLabel } from '@/lib/format';
-import { CreditCard, CheckCircle, Trash2, TrendingUp, Building2, FileText, Save } from 'lucide-react';
+import { CreditCard, CheckCircle, Trash2, TrendingUp, Building2, FileText, Save, Edit2, MessageCircle, X } from 'lucide-react';
 import { toast } from 'sonner';
+
+interface Payment {
+  id: string;
+  date: string;
+  type: string;
+  interestAmount: number;
+  capitalAmount: number;
+  interestPayment: number;
+  previousBalance: number;
+  newBalance: number;
+  notes: string | null;
+  receipt: string | null;
+}
 
 interface LoanDetail {
   id: string;
@@ -16,16 +29,7 @@ interface LoanDetail {
   status: string;
   notes: string | null;
   client: { id: string; name: string; cedula: string; phone: string };
-  payments: {
-    id: string;
-    date: string;
-    type: string;
-    interestAmount: number;
-    capitalAmount: number;
-    previousBalance: number;
-    newBalance: number;
-    notes: string | null;
-  }[];
+  payments: Payment[];
 }
 
 export default function LoanDetailPage() {
@@ -33,6 +37,15 @@ export default function LoanDetailPage() {
   const [loan, setLoan] = useState<LoanDetail | null>(null);
   const [editingNotes, setEditingNotes] = useState(false);
   const [notes, setNotes] = useState('');
+  const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
+  const [editForm, setEditForm] = useState({
+    date: '',
+    type: 'interes',
+    capitalAmount: '',
+    interestPaymentAmount: '',
+    notes: '',
+    receipt: '',
+  });
 
   const loadLoan = useCallback(() => {
     if (!selectedLoanId) return;
@@ -97,6 +110,67 @@ export default function LoanDetailPage() {
       triggerRefresh();
       setCurrentPage('loans');
     } catch { toast.error('Error de conexión'); }
+  };
+
+  const handleEditPayment = (payment: Payment) => {
+    setEditingPayment(payment);
+    setEditForm({
+      date: payment.date.split('T')[0],
+      type: payment.type,
+      capitalAmount: payment.capitalAmount.toString(),
+      interestPaymentAmount: payment.interestPayment.toString(),
+      notes: payment.notes || '',
+      receipt: payment.receipt || '',
+    });
+  };
+
+  const handleSavePaymentEdit = async () => {
+    if (!editingPayment) return;
+    try {
+      const res = await fetch(`/api/payments/${editingPayment.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: editForm.date,
+          type: editForm.type,
+          capitalAmount: parseFloat(editForm.capitalAmount) || 0,
+          interestPaymentAmount: parseFloat(editForm.interestPaymentAmount) || 0,
+          notes: editForm.notes || undefined,
+          receipt: editForm.receipt || undefined,
+        }),
+      });
+      if (res.ok) {
+        toast.success('Pago actualizado');
+        setEditingPayment(null);
+        loadLoan();
+        triggerRefresh();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Error al actualizar');
+      }
+    } catch { toast.error('Error de conexión'); }
+  };
+
+  const handleWhatsApp = (payment: Payment) => {
+    if (!loan) return;
+    const phone = loan.client.phone.replace(/[^0-9]/g, '');
+    const message = `*PAGO REGISTRADO - PRESTAAEA*\n\n` +
+      `*Cliente:* ${loan.client.name}\n` +
+      `*Cédula:* ${loan.client.cedula}\n\n` +
+      `*DETALLES DEL PAGO:*\n` +
+      `Fecha: ${formatDate(payment.date)}\n` +
+      `Tipo: ${payment.type === 'interes' ? 'Solo Intereses' : payment.type === 'interes_capital' ? 'Intereses + Capital' : payment.type === 'capital' ? 'Solo Capital' : payment.type === 'abono_intereses' ? 'Abono a Intereses' : payment.type}\n` +
+      `Intereses: ${formatCOP(payment.interestAmount)}\n` +
+      `${payment.interestPayment > 0 ? `Abono a Intereses: ${formatCOP(payment.interestPayment)}\n` : ''}` +
+      `${payment.capitalAmount > 0 ? `Abono a Capital: ${formatCOP(payment.capitalAmount)}\n` : ''}` +
+      `Total Pagado: ${formatCOP(payment.interestAmount + payment.capitalAmount + payment.interestPayment)}\n\n` +
+      `Saldo Anterior: ${formatCOP(payment.previousBalance)}\n` +
+      `Nuevo Saldo: ${formatCOP(payment.newBalance)}\n` +
+      `${payment.receipt ? `Recibo: ${payment.receipt}\n` : ''}` +
+      `${payment.notes ? `Notas: ${payment.notes}` : ''}`;
+    
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
   };
 
   return (
@@ -196,24 +270,135 @@ export default function LoanDetailPage() {
             ) : (
               <div className="space-y-2 max-h-80 overflow-y-auto">
                 {loan.payments.map((p) => (
-                  <div key={p.id} className="flex items-center gap-4 p-3 bg-[#0B1120] rounded-xl">
+                  <div key={p.id} className="flex items-center gap-3 p-3 bg-[#0B1120] rounded-xl">
                     <div className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-white font-medium">{formatDate(p.date)}</p>
                       <p className="text-xs text-slate-500">
                         Intereses: {formatCOP(p.interestAmount)}
                         {p.capitalAmount > 0 && ` | Capital: ${formatCOP(p.capitalAmount)}`}
+                        {p.interestPayment > 0 && ` | Abono Int: ${formatCOP(p.interestPayment)}`}
                         <span className="ml-2">Saldo: {formatCOP(p.previousBalance)} → {formatCOP(p.newBalance)}</span>
                       </p>
+                      {p.receipt && <p className="text-xs text-slate-400 mt-1">Recibo: {p.receipt}</p>}
+                      {p.notes && <p className="text-xs text-slate-400">Notas: {p.notes}</p>}
                     </div>
-                    <span className="text-sm font-bold text-emerald-400 flex-shrink-0">
-                      {formatCOP(p.interestAmount + p.capitalAmount)}
-                    </span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-sm font-bold text-emerald-400">
+                        {formatCOP(p.interestAmount + p.capitalAmount + p.interestPayment)}
+                      </span>
+                      <button
+                        onClick={() => handleWhatsApp(p)}
+                        className="p-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-400 transition-colors"
+                        title="Enviar por WhatsApp"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleEditPayment(p)}
+                        className="p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-colors"
+                        title="Editar pago"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
+
+          {/* Edit Payment Modal */}
+          {editingPayment && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-[#111827] border border-[#1E293B] rounded-2xl p-6 w-full max-w-md">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-bold text-white">Editar Pago</h3>
+                  <button onClick={() => setEditingPayment(null)} className="text-slate-400 hover:text-white">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Fecha</label>
+                    <input
+                      type="date"
+                      value={editForm.date}
+                      onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+                      className="w-full bg-[#0B1120] border border-[#1E293B] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Tipo de pago</label>
+                    <select
+                      value={editForm.type}
+                      onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}
+                      className="w-full bg-[#0B1120] border border-[#1E293B] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
+                    >
+                      <option value="interes">Solo Intereses</option>
+                      <option value="interes_capital">Intereses + Capital</option>
+                      <option value="capital">Solo Capital</option>
+                      <option value="abono_intereses">Abono a Intereses</option>
+                    </select>
+                  </div>
+                  {(editForm.type === 'interes_capital' || editForm.type === 'capital') && (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1.5">Abono a Capital</label>
+                      <input
+                        type="number"
+                        value={editForm.capitalAmount}
+                        onChange={(e) => setEditForm({ ...editForm, capitalAmount: e.target.value })}
+                        className="w-full bg-[#0B1120] border border-[#1E293B] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
+                      />
+                    </div>
+                  )}
+                  {editForm.type === 'abono_intereses' && (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1.5">Abono a Intereses</label>
+                      <input
+                        type="number"
+                        value={editForm.interestPaymentAmount}
+                        onChange={(e) => setEditForm({ ...editForm, interestPaymentAmount: e.target.value })}
+                        className="w-full bg-[#0B1120] border border-[#1E293B] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Recibo</label>
+                    <input
+                      value={editForm.receipt}
+                      onChange={(e) => setEditForm({ ...editForm, receipt: e.target.value })}
+                      placeholder="Número de recibo"
+                      className="w-full bg-[#0B1120] border border-[#1E293B] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Notas</label>
+                    <textarea
+                      value={editForm.notes}
+                      onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                      rows={2}
+                      className="w-full bg-[#0B1120] border border-[#1E293B] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 resize-none"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-3 pt-4 border-t border-[#1E293B]">
+                    <button
+                      onClick={() => setEditingPayment(null)}
+                      className="px-4 py-2.5 text-sm text-slate-300 hover:text-white"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleSavePaymentEdit}
+                      className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium"
+                    >
+                      <Save className="w-4 h-4" /> Guardar Cambios
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Notes */}
           <div className="bg-[#111827] border border-[#1E293B] rounded-2xl p-6">

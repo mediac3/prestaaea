@@ -5,7 +5,7 @@ import { logAudit, getClientIp } from '@/lib/audit'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { loanId, date, type, capitalAmount, interestPaymentAmount, notes, _audit } = body
+    const { loanId, date, type, capitalAmount, interestPaymentAmount, notes, receipt, _audit } = body
 
     if (!loanId || !date || !type) {
       return NextResponse.json(
@@ -44,17 +44,22 @@ export async function POST(request: NextRequest) {
 
     let interestAmount = 0
     let capital = parseFloat(capitalAmount) || 0
-    const interestPayment = parseFloat(interestPaymentAmount) || 0 // Abono adicional a intereses
+    const interestPayment = parseFloat(interestPaymentAmount) || 0
 
+    // Calcular intereses según el tipo de pago
     if (type === 'interes') {
-      interestAmount = loan.amount * (loan.rate / 100)
+      interestAmount = previousBalance * (loan.rate / 100)
       capital = 0
     } else if (type === 'interes_capital') {
-      interestAmount = loan.amount * (loan.rate / 100)
+      interestAmount = previousBalance * (loan.rate / 100)
       capital = parseFloat(capitalAmount) || 0
     } else if (type === 'capital') {
       interestAmount = 0
       capital = parseFloat(capitalAmount) || 0
+    } else if (type === 'abono_intereses') {
+      interestAmount = 0
+      capital = 0
+      // interestPayment es el monto del abono a intereses
     }
 
     const newBalance = previousBalance - capital
@@ -66,10 +71,11 @@ export async function POST(request: NextRequest) {
         type,
         interestAmount,
         capitalAmount: capital,
-        interestPayment, // Abono adicional a intereses
+        interestPayment,
         previousBalance,
         newBalance: Math.max(newBalance, 0),
         notes: notes || null,
+        receipt: receipt || null,
       },
       include: {
         loan: {
@@ -104,9 +110,10 @@ export async function POST(request: NextRequest) {
           type,
           interestAmount,
           capitalAmount: capital,
-          interestPayment, // Abono adicional a intereses
+          interestPayment,
           previousBalance,
           newBalance: Math.max(newBalance, 0),
+          receipt,
         },
         ipAddress: getClientIp(request),
       })

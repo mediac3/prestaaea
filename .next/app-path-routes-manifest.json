@@ -1,0 +1,21 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/api/ai-chat/route": "/api/ai-chat",
+  "/api/audit/route": "/api/audit",
+  "/api/auth/route": "/api/auth",
+  "/api/clients/[id]/route": "/api/clients/[id]",
+  "/api/clients/route": "/api/clients",
+  "/api/dashboard/route": "/api/dashboard",
+  "/api/loans/[id]/close/route": "/api/loans/[id]/close",
+  "/api/loans/[id]/route": "/api/loans/[id]",
+  "/api/loans/route": "/api/loans",
+  "/api/notifications/route": "/api/notifications",
+  "/api/payments/[id]/route": "/api/payments/[id]",
+  "/api/payments/route": "/api/payments",
+  "/api/products/route": "/api/products",
+  "/api/route": "/api",
+  "/api/users/[id]/route": "/api/users/[id]",
+  "/api/users/route": "/api/users",
+  "/page": "/"
+}
