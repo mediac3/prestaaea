@@ -5,7 +5,7 @@ import { logAudit, getClientIp } from '@/lib/audit'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { loanId, date, type, capitalAmount, notes, _audit } = body
+    const { loanId, date, type, capitalAmount, interestPaymentAmount, notes, _audit } = body
 
     if (!loanId || !date || !type) {
       return NextResponse.json(
@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
 
     let interestAmount = 0
     let capital = parseFloat(capitalAmount) || 0
+    const interestPayment = parseFloat(interestPaymentAmount) || 0 // Abono adicional a intereses
 
     if (type === 'interes') {
       interestAmount = loan.amount * (loan.rate / 100)
@@ -65,6 +66,7 @@ export async function POST(request: NextRequest) {
         type,
         interestAmount,
         capitalAmount: capital,
+        interestPayment, // Abono adicional a intereses
         previousBalance,
         newBalance: Math.max(newBalance, 0),
         notes: notes || null,
@@ -102,6 +104,7 @@ export async function POST(request: NextRequest) {
           type,
           interestAmount,
           capitalAmount: capital,
+          interestPayment, // Abono adicional a intereses
           previousBalance,
           newBalance: Math.max(newBalance, 0),
         },

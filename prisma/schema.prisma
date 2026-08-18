@@ -71,15 +71,16 @@ model AuditLog {
 }
 
 model Payment {
-  id            String   @id @default(cuid())
-  loanId        String
-  loan          Loan     @relation(fields: [loanId], references: [id])
-  date          DateTime
-  type          String   @default("interes") // interes, interes_capital, capital
-  interestAmount Float   @default(0)
-  capitalAmount  Float   @default(0)
+  id              String   @id @default(cuid())
+  loanId          String
+  loan            Loan     @relation(fields: [loanId], references: [id])
+  date            DateTime
+  type            String   @default("interes") // interes, interes_capital, capital
+  interestAmount  Float    @default(0)
+  capitalAmount   Float    @default(0)
+  interestPayment Float    @default(0) // Abono adicional a intereses
   previousBalance Float
-  newBalance    Float
-  notes         String?
-  createdAt     DateTime @default(now())
+  newBalance      Float
+  notes           String?
+  createdAt       DateTime @default(now())
 }
