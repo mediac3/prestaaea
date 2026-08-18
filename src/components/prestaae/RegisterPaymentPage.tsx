@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { formatCOP } from '@/lib/format';
-import { CreditCard, Calendar, AlignLeft, FileText } from 'lucide-react';
+import { CreditCard, Calendar, AlignLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface LoanOption {
@@ -19,10 +19,9 @@ export default function RegisterPaymentPage() {
   const { selectedLoanId, setCurrentPage, refreshKey, triggerRefresh, setSelectedLoanId } = useAppStore();
   const [loans, setLoans] = useState<LoanOption[]>([]);
   const [selectedLoan, setSelectedLoan] = useState<LoanOption | null>(null);
-  const [paymentType, setPaymentType] = useState<'interes' | 'interes_capital' | 'capital' | 'abono_intereses'>('interes');
+  const [paymentType, setPaymentType] = useState<'interes' | 'interes_capital' | 'capital'>('interes');
   const [capitalAmount, setCapitalAmount] = useState('');
-  const [interestPaymentAmount, setInterestPaymentAmount] = useState(''); // Abono a intereses (solo para type='abono_intereses')
-  const [receipt, setReceipt] = useState(''); // Número de recibo
+  const [interestPaymentAmount, setInterestPaymentAmount] = useState(''); // Abono adicional a intereses
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
@@ -45,22 +44,13 @@ export default function RegisterPaymentPage() {
     ? (selectedLoan.payments.length > 0 ? selectedLoan.payments[0].newBalance : selectedLoan.amount)
     : 0;
   const monthlyInterest = selectedLoan ? currentBalance * (selectedLoan.rate / 100) : 0;
-  // Para 'abono_intereses', el capitalAmount es el abono a intereses, no hay interes del mes ni abono a capital
-  const isInterestPaymentType = paymentType === 'abono_intereses';
-  const capital = paymentType === 'capital' || paymentType === 'interes_capital' ? (parseFloat(capitalAmount) || 0) : 0;
-  const interestPayment = isInterestPaymentType ? (parseFloat(interestPaymentAmount) || 0) : 0;
-  const interestDue = paymentType === 'capital' ? 0 : monthlyInterest;
-  const totalPayment = interestDue + capital + interestPayment;
+  const capital = paymentType === 'capital' ? (parseFloat(capitalAmount) || 0) : (paymentType === 'interes_capital' ? (parseFloat(capitalAmount) || 0) : 0);
+  const interestPayment = parseFloat(interestPaymentAmount) || 0; // Abono adicional a intereses
+  const totalPayment = (paymentType === 'capital' ? 0 : monthlyInterest) + capital + interestPayment;
   const newBalance = currentBalance - capital;
 
   const handleSubmit = async () => {
     if (!selectedLoan) { toast.error('Selecciona un préstamo'); return; }
-    if (paymentType === 'interes_capital' || paymentType === 'capital') {
-      if (!capitalAmount || parseFloat(capitalAmount) <= 0) { toast.error('Ingresa un monto de abono a capital válido'); return; }
-    }
-    if (paymentType === 'abono_intereses') {
-      if (!interestPaymentAmount || parseFloat(interestPaymentAmount) <= 0) { toast.error('Ingresa un monto de abono a intereses válido'); return; }
-    }
     setLoading(true);
     try {
       const res = await fetch('/api/payments', {
@@ -72,9 +62,7 @@ export default function RegisterPaymentPage() {
           type: paymentType,
           interestAmount: paymentType === 'capital' ? 0 : monthlyInterest,
           capitalAmount: capital,
-          interestPaymentAmount: interestPayment,
-          receipt: receipt || undefined,
-          notes: notes || undefined,
+          interestPaymentAmount: interestPayment, // Abono adicional a intereses
         }),
       });
       const data = await res.json();
@@ -90,7 +78,6 @@ export default function RegisterPaymentPage() {
     { value: 'interes' as const, label: 'Solo Intereses', desc: 'Pago mensual regular de intereses' },
     { value: 'interes_capital' as const, label: 'Intereses + Abono a Capital', desc: 'Pago de intereses más un abono para reducir el saldo' },
     { value: 'capital' as const, label: 'Solo Abono a Capital', desc: 'Abono para reducir el saldo, sin cobro de intereses' },
-    { value: 'abono_intereses' as const, label: 'Abono a Intereses', desc: 'Abono adicional directo a intereses, no reduce el capital' },
   ];
 
   return (
@@ -187,36 +174,21 @@ export default function RegisterPaymentPage() {
               </div>
             )}
 
-            {/* Interest Payment Amount (solo para abono_intereses) */}
-            {paymentType === 'abono_intereses' && (
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                  Monto de abono a intereses <span className="text-red-400">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">$</span>
-                  <input
-                    type="number"
-                    value={interestPaymentAmount}
-                    onChange={(e) => setInterestPaymentAmount(e.target.value)}
-                    placeholder="0"
-                    className="w-full bg-[#0B1120] border border-[#1E293B] rounded-xl pl-8 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Receipt Number */}
+            {/* Interest Payment Amount (Abono adicional a intereses) */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                <FileText className="w-3.5 h-3.5 inline mr-1.5" />Recibo (opcional)
+                Abono a intereses (opcional)
               </label>
-              <input
-                value={receipt}
-                onChange={(e) => setReceipt(e.target.value)}
-                placeholder="Número de recibo/comprobante"
-                className="w-full bg-[#0B1120] border border-[#1E293B] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/50 transition-all"
-              />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">$</span>
+                <input
+                  type="number"
+                  value={interestPaymentAmount}
+                  onChange={(e) => setInterestPaymentAmount(e.target.value)}
+                  placeholder="0"
+                  className="w-full bg-[#0B1120] border border-[#1E293B] rounded-xl pl-8 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all"
+                />
+              </div>
             </div>
 
             {/* Date & Notes */}
@@ -268,14 +240,12 @@ export default function RegisterPaymentPage() {
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-sm text-slate-400">Intereses</span>
-                <span className="text-sm text-white">{formatCOP(interestDue)}</span>
+                <span className="text-sm text-white">{paymentType === 'capital' ? formatCOP(0) : formatCOP(monthlyInterest)}</span>
               </div>
-              {paymentType === 'abono_intereses' && (
-                <div className="flex justify-between">
-                  <span className="text-sm text-slate-400">Abono a Intereses</span>
-                  <span className="text-sm text-emerald-400 font-medium">{formatCOP(interestPayment)}</span>
-                </div>
-              )}
+              <div className="flex justify-between">
+                <span className="text-sm text-slate-400">Abono a Intereses</span>
+                <span className="text-sm text-white">{formatCOP(interestPayment)}</span>
+              </div>
               <div className="flex justify-between">
                 <span className="text-sm text-slate-400">Abono a Capital</span>
                 <span className="text-sm text-white">{formatCOP(capital)}</span>
@@ -292,11 +262,6 @@ export default function RegisterPaymentPage() {
                 <span className="text-sm text-slate-400">Nuevo Saldo</span>
                 <span className="text-sm text-white font-medium">{formatCOP(Math.max(0, newBalance))}</span>
               </div>
-              {receipt && (
-                <div className="border-t border-[#1E293B] pt-3">
-                  <p className="text-xs text-slate-500">Recibo: <span className="text-slate-300">{receipt}</span></p>
-                </div>
-              )}
             </div>
           </div>
         </div>
