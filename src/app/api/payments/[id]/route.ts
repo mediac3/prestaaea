@@ -4,12 +4,12 @@ import { logAudit, getClientIp } from '@/lib/audit'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: paymentId } = await params;
     const body = await request.json()
     const { date, type, capitalAmount, interestPaymentAmount, receipt, notes, _audit } = body
-    const paymentId = params.id
 
     if (!date || !type) {
       return NextResponse.json(
@@ -186,10 +186,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const paymentId = params.id
+    const { id: paymentId } = await params;
 
     const existingPayment = await db.payment.findUnique({
       where: { id: paymentId },

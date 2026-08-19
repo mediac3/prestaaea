@@ -3,8 +3,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { formatCOP, getInitials, getAvatarColor } from '@/lib/format';
-import { Plus, Search, Eye, Trash2, CreditCard } from 'lucide-react';
+import { Plus, Search, Eye, Trash2, CreditCard, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
+import * as ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 interface Loan {
   id: string;
@@ -72,6 +74,97 @@ export default function LoansPage() {
   const goToPayment = (id: string) => {
     setSelectedLoanId(id);
     setCurrentPage('register-payment');
+  };
+
+  const exportToExcel = async (loan: Loan) => {
+    try {
+      // Obtener detalles completos del préstamo con pagos
+      const res = await fetch(`/api/loans/${loan.id}`);
+      const loanDetail = await res.json();
+      
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Historial de Pagos');
+      
+      // Configurar columnas
+      worksheet.columns = [
+        { header: 'Fecha', key: 'date', width: 15 },
+        { header: 'Tipo de Pago', key: 'type', width: 20 },
+        { header: 'Intereses', key: 'interestAmount', width: 15 },
+        { header: 'Abono a Intereses', key: 'interestPayment', width: 18 },
+        { header: 'Abono a Capital', key: 'capitalAmount', width: 18 },
+        { header: 'Total Pagado', key: 'total', width: 15 },
+        { header: 'Saldo Anterior', key: 'previousBalance', width: 18 },
+        { header: 'Nuevo Saldo', key: 'newBalance', width: 18 },
+        { header: 'Recibo', key: 'receipt', width: 15 },
+        { header: 'Notas', key: 'notes', width: 30 },
+      ];
+      
+      // Encabezado con información del cliente
+      worksheet.mergeCells('A1:J1');
+      worksheet.getCell('A1').value = `HISTORIAL DE PAGOS - ${loanDetail.client.name}`;
+      worksheet.getCell('A1').font = { bold: true, size: 14 };
+      worksheet.getCell('A1').alignment = { horizontal: 'center' };
+      
+      worksheet.addRow([]);
+      worksheet.addRow(['Cédula:', loanDetail.client.cedula]);
+      worksheet.addRow(['Monto Original:', formatCOP(loanDetail.amount)]);
+      worksheet.addRow(['Tasa de Interés:', `${loanDetail.rate}% mensual`]);
+      worksheet.addRow(['Plazo:', `${loanDetail.term} meses`]);
+      worksheet.addRow(['Saldo Actual:', formatCOP(loanDetail.payments.length > 0 ? loanDetail.payments[0].newBalance : loanDetail.amount)]);
+      
+      worksheet.addRow([]);
+      
+      // Agregar pagos ordenados por fecha
+      const sortedPayments = [...loanDetail.payments].sort((a, b) => 
+        new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+      
+      sortedPayments.forEach(p => {
+        const typeLabel = p.type === 'interes' ? 'Solo Intereses' : 
+                         p.type === 'interes_capital' ? 'Intereses + Capital' : 
+                         p.type === 'capital' ? 'Solo Capital' : 'Abono a Intereses';
+        
+        worksheet.addRow({
+          date: new Date(p.date).toLocaleDateString('es-CO'),
+          type: typeLabel,
+          interestAmount: formatCOP(p.interestAmount),
+          interestPayment: p.interestPayment > 0 ? formatCOP(p.interestPayment) : '-',
+          capitalAmount: p.capitalAmount > 0 ? formatCOP(p.capitalAmount) : '-',
+          total: formatCOP(p.interestAmount + p.capitalAmount + p.interestPayment),
+          previousBalance: formatCOP(p.previousBalance),
+          newBalance: formatCOP(p.newBalance),
+          receipt: p.receipt || '-',
+          notes: p.notes || '-',
+        });
+      });
+      
+      // Estilos de encabezado de tabla
+      const headerRow = worksheet.getRow(sortedPayments.length > 0 ? sortedPayments.length + 7 : 7);
+      headerRow.eachCell(cell => {
+        cell.font = { bold: true };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF10B981' },
+        };
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' },
+        };
+      });
+      
+      // Guardar archivo
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `Historial_Pagos_${loanDetail.client.name.replace(/\s+/g, '_')}.xlsx`);
+      
+      toast.success('Archivo Excel generado exitosamente');
+    } catch (error) {
+      console.error('Error al generar Excel:', error);
+      toast.error('Error al generar el archivo Excel');
+    }
   };
 
   const tabs = [
@@ -174,6 +267,9 @@ export default function LoansPage() {
                         </button>
                         <button onClick={() => goToPayment(loan.id)} className="p-1.5 text-slate-400 hover:text-amber-400 transition-colors rounded-lg hover:bg-amber-500/10" title="Registrar pago">
                           <CreditCard className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => exportToExcel(loan)} className="p-1.5 text-slate-400 hover:text-blue-400 transition-colors rounded-lg hover:bg-blue-500/10" title="Exportar a Excel">
+                          <FileDown className="w-4 h-4" />
                         </button>
                         {tab !== 'pagado' && (
                           <button onClick={() => handleDelete(loan)} className="p-1.5 text-slate-400 hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/10" title="Eliminar">
