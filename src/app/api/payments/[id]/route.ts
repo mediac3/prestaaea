@@ -77,19 +77,26 @@ export async function PUT(
     const newBalance = previousBalance - capital
 
     // Update the payment
+    // Crear objeto de pago (con receipt solo si existe en el schema)
+    const updateData: any = {
+      date: new Date(date),
+      type,
+      interestAmount,
+      capitalAmount: capital,
+      interestPayment,
+      previousBalance,
+      newBalance: Math.max(newBalance, 0),
+      notes: notes || null,
+    }
+
+    // Agregar receipt solo si se proporcionó (compatibilidad hacia atrás)
+    if (receipt !== undefined && receipt !== null) {
+      updateData.receipt = receipt
+    }
+
     const updatedPayment = await db.payment.update({
       where: { id: paymentId },
-      data: {
-        date: new Date(date),
-        type,
-        interestAmount,
-        capitalAmount: capital,
-        interestPayment,
-        previousBalance,
-        newBalance: Math.max(newBalance, 0),
-        receipt: receipt || null,
-        notes: notes || null,
-      },
+      data: updateData,
     })
 
     // Recalculate all subsequent payments
