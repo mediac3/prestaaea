@@ -100,6 +100,7 @@ export async function PUT(
     })
 
     // Recalculate all subsequent payments
+    let runningBalance = Math.max(newBalance, 0)
     const subsequentPayments = allPayments.slice(paymentIndex + 1)
     
     for (const payment of subsequentPayments) {
@@ -119,15 +120,17 @@ export async function PUT(
         subCapital = 0
       }
 
-      const subNewBalance = previousBalance - subCapital
+      const subNewBalance = runningBalance - subCapital
 
       await db.payment.update({
         where: { id: payment.id },
         data: {
-          previousBalance,
+          previousBalance: runningBalance,
           newBalance: Math.max(subNewBalance, 0),
         },
       })
+
+      runningBalance = Math.max(subNewBalance, 0)
     }
 
     // Check if loan should be closed
