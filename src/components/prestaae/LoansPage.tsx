@@ -87,6 +87,7 @@ export default function LoansPage() {
       
       // Configurar columnas
       worksheet.columns = [
+        { header: 'Cliente', key: 'clientName', width: 25 },
         { header: 'Fecha', key: 'date', width: 15 },
         { header: 'Tipo de Pago', key: 'type', width: 20 },
         { header: 'Intereses', key: 'interestAmount', width: 15 },
@@ -100,7 +101,7 @@ export default function LoansPage() {
       ];
       
       // Encabezado con información del cliente
-      worksheet.mergeCells('A1:J1');
+      worksheet.mergeCells('A1:K1');
       worksheet.getCell('A1').value = `HISTORIAL DE PAGOS - ${loanDetail.client.name}`;
       worksheet.getCell('A1').font = { bold: true, size: 14 };
       worksheet.getCell('A1').alignment = { horizontal: 'center' };
@@ -135,6 +136,7 @@ export default function LoansPage() {
           newBalance: formatCOP(p.newBalance),
           receipt: p.receipt || '-',
           notes: p.notes || '-',
+          clientName: loanDetail.client.name,
         });
       });
       
@@ -154,6 +156,21 @@ export default function LoansPage() {
           right: { style: 'thin' },
         };
       });
+      
+      // Aplicar bordes a todas las celdas de datos
+      const startDataRow = 7;
+      const endDataRow = startDataRow + sortedPayments.length - 1;
+      for (let rowNum = startDataRow; rowNum <= endDataRow; rowNum++) {
+        const row = worksheet.getRow(rowNum);
+        row.eachCell(cell => {
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' },
+          };
+        });
+      }
       
       // Guardar archivo
       const buffer = await workbook.xlsx.writeBuffer();
