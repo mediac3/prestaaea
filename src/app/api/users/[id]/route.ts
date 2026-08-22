@@ -9,7 +9,7 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { name, email, role, password, _audit } = body
+    const { name, email, role, password, twoFactorEnabled, twoFactorEmail, _audit } = body
 
     const existing = await db.user.findUnique({ where: { id } })
     if (!existing) {
@@ -28,6 +28,8 @@ export async function PUT(
     if (email !== undefined) updateData.email = email
     if (role !== undefined) updateData.role = role
     if (password && password.trim()) updateData.password = password
+    if (twoFactorEnabled !== undefined) updateData.twoFactorEnabled = twoFactorEnabled
+    if (twoFactorEmail !== undefined) updateData.twoFactorEmail = twoFactorEmail || null
 
     const user = await db.user.update({
       where: { id },
@@ -41,7 +43,7 @@ export async function PUT(
         userEmail: _audit.userEmail,
         action: 'UPDATE_USER',
         module: 'users',
-        details: { targetUserId: id, targetUserName: existing.name, changes: { name, email, role } },
+        details: { targetUserId: id, targetUserName: existing.name, changes: { name, email, role, twoFactorEnabled } },
         ipAddress: getClientIp(request),
       })
     }

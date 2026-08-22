@@ -10,6 +10,8 @@ interface UserItem {
   email: string;
   name: string;
   role: string;
+  twoFactorEnabled: boolean;
+  twoFactorEmail: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -19,7 +21,7 @@ const roleMap: Record<string, string> = {
   cliente: 'Cliente',
 };
 
-const emptyForm = { nombre: '', email: '', password: '', role: 'cliente' };
+const emptyForm = { nombre: '', email: '', password: '', role: 'cliente', twoFactorEnabled: false, twoFactorEmail: '' };
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('es-CO', {
@@ -77,6 +79,8 @@ export default function UsersPage() {
       email: u.email,
       password: '',
       role: u.role,
+      twoFactorEnabled: u.twoFactorEnabled,
+      twoFactorEmail: u.twoFactorEmail || '',
     });
     setModalOpen(true);
   };
@@ -99,6 +103,8 @@ export default function UsersPage() {
         name: form.nombre,
         email: form.email,
         role: form.role,
+        twoFactorEnabled: form.twoFactorEnabled,
+        twoFactorEmail: form.twoFactorEmail || null,
         ...auditCtx,
       };
       if (form.password) {
@@ -307,6 +313,43 @@ export default function UsersPage() {
                   <option value="admin" className="bg-[#0B1120]">Administrador</option>
                 </select>
               </div>
+
+              {editingUser && (
+                <>
+                  <div className="border-t border-[#1E293B] pt-4">
+                    <h4 className="text-sm font-semibold text-white mb-3">Autenticación de Dos Factores</h4>
+                    
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <label className="text-sm text-slate-300">Habilitar 2FA</label>
+                        <p className="text-xs text-slate-500">Requiere código por email al iniciar sesión</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, twoFactorEnabled: !form.twoFactorEnabled })}
+                        className={`relative w-12 h-6 rounded-full transition-colors ${form.twoFactorEnabled ? 'bg-emerald-500' : 'bg-slate-600'}`}
+                      >
+                        <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${form.twoFactorEnabled ? 'translate-x-6' : ''}`} />
+                      </button>
+                    </div>
+
+                    {form.twoFactorEnabled && (
+                      <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                          Email para 2FA <span className="text-slate-500">(opcional, usa el principal si vacío)</span>
+                        </label>
+                        <input
+                          type="email"
+                          value={form.twoFactorEmail || ''}
+                          onChange={(e) => setForm({ ...form, twoFactorEmail: e.target.value })}
+                          placeholder="correo2fa@ejemplo.com"
+                          className="w-full bg-[#0B1120] border border-[#1E293B] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/50 transition-all"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button

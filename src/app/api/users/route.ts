@@ -10,6 +10,8 @@ export async function GET() {
         email: true,
         name: true,
         role: true,
+        twoFactorEnabled: true,
+        twoFactorEmail: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -28,7 +30,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, password, name, role, _audit } = body
+    const { email, password, name, role, twoFactorEnabled, twoFactorEmail, _audit } = body
 
     if (!email || !password || !name || !role) {
       return NextResponse.json(
@@ -46,7 +48,14 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await db.user.create({
-      data: { email, password, name, role },
+      data: { 
+        email, 
+        password, 
+        name, 
+        role,
+        twoFactorEnabled: twoFactorEnabled || false,
+        twoFactorEmail: twoFactorEmail || null,
+      },
     })
 
     if (_audit) {
